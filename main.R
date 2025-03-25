@@ -27,7 +27,7 @@ rm(list = ls())
 # .libPaths("E:/Rlibs")
 .libPaths("/home/anjonas/R4Userlibs")
 
-list.of.packages <- c("data.table", "doParallel", "caret", "Cubist", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse", "corrplot")
+list.of.packages <- c("data.table", "doParallel", "caret", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse", "corrplot")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages, lib = "/home/anjonas/R4Userlibs", dependencies = TRUE, repos='https://stat.ethz.ch/CRAN/')
 
@@ -159,7 +159,7 @@ times = 30
 data = data
 importance = "permutation"
 num.trees = 150
-parallel = F
+parallel = T
 savedir = rfe_output_path
 
 # # temporary
