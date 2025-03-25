@@ -53,16 +53,18 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
   index <- caret::createDataPartition(pull(data[response]), p = p, times = times, groups = ifelse(is.numeric(groups), groups, 2))
   
   # retain only not-processed
-  index <- index[-processed_subset]
-  
-  #outer resampling, using the folds
-  #CV of feature selection
-  `%infix%` <- ifelse(parallel, `%dopar%`, `%do%`)
+  if(length(processed_subset) > 0){
+    index <- index[-processed_subset]
+  }
+  # check if anything is left to process, exit otherwise
   if(length(index) == 0){
     print("---All subsets already processed. Moving on. ")
     return(NULL)
   }
-    
+  
+  #outer resampling, using the folds
+  #CV of feature selection
+  `%infix%` <- ifelse(parallel, `%dopar%`, `%do%`)
   foreach(i=1:length(index)) %infix% {
 
     #Verbose
