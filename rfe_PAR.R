@@ -40,17 +40,28 @@
 #' @param ... Any further arguments to pass to caret::train()
 #' @return A list object holding the rfe output. Input into tidy_rfe_output. 
 perform_rfe <- function(response, base_learner = "ranger", type = "regression",
-                        p = 0.75, times = 30, groups = 9, parallel = T, 
+                        p = 0.75, times = 30, groups = 9, parallel = T, n_cores,
                         subsets, data,
                         ...) {
+  
+  # check for available output
+  available_output <- list.files(savedir, pattern = "[0-9].rds")
+  processed_subset <- as.numeric(gsub("\\D+", "", available_output))
   
   #create folds for repeated n-fold cross validation
   set.seed(123)
   index <- caret::createDataPartition(pull(data[response]), p = p, times = times, groups = ifelse(is.numeric(groups), groups, 2))
   
+  # retain only not-processed
+  index <- index[-processed_subset]
+  
   #outer resampling, using the folds
   #CV of feature selection
   `%infix%` <- ifelse(parallel, `%dopar%`, `%do%`)
+  if(length(index) == 0){
+    return(NULL)
+  }
+    
   foreach(i=1:length(index)) %infix% {
 
     #Verbose
@@ -103,7 +114,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
       formula <- as.formula(paste(response, " ~ .", sep = ""))
       
       # Detect number of available cores
-      n_cores <- 24
+      n_cores <- n_cores
       
       # Register parallel backend
       cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core

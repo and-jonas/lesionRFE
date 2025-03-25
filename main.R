@@ -161,6 +161,7 @@ times = 30
 data = data
 importance = "permutation"
 num.trees = 150
+n_cores = 24
 parallel = F
 savedir = rfe_output_path
 
@@ -176,7 +177,7 @@ rfe <- perform_rfe(response = response, base_learner = base_learner, type = type
                    p = p, times = times, 
                    subsets = subsets, data = data,
                    importance = importance,
-                   num.trees = num.trees, parallel = parallel,
+                   num.trees = num.trees, n_cores = n_cores, parallel = parallel,
                    savedir = savedir)
 
 # =================================================================================================== -
