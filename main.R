@@ -43,13 +43,14 @@ path_to_utils <- "/projects/lesionRFE/"
 source(paste0(path_to_utils, "rfe_PAR.R"))
 source(paste0(path_to_utils, "utils.R"))
 
-base_output_path <- "/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_"
+# define scenario
+target_trait <- "diff_area_pp_y_norm_chr"
+
+# set paths
+base_output_path <- paste0("/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_", target_trait, "_2")
 figure_path <- paste0(base_output_path, "/Figures/")
 path_input_data <- "/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/data/subset_step2.rds"
 run_paths <- paste0(base_output_path, c("/run0", "/run1", "/run2"))
-
-# define scenario
-target_trait <- "diff_area_pp_y_norm_chr"
 
 # make output directories
 for (d in c(base_output_path, figure_path, run_paths)){
@@ -156,7 +157,7 @@ response = target_trait
 base_learner = "ranger"
 type = "regression"
 p = 0.75
-times = 3
+times = 30
 data = data
 importance = "permutation"
 num.trees = 150
