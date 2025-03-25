@@ -190,7 +190,7 @@ subset_output_files <- list.files(rfe_output_path,
                                   pattern = "[0-9].rds",
                                   full.names = T)
 
-rfe <- lapply(subset_output_files[c(1, 12, 23, 25, 26)], readRDS)
+rfe <- lapply(subset_output_files, readRDS)
 
 # create a tidy output
 tidy <- tidy_rfe_output(data = rfe, base_learner = "ranger")
@@ -239,7 +239,6 @@ highly_correlated <- as.data.frame(as.table(M)) %>%
   as.data.frame()
 
 # add variable to retain (lower mean rank)
-ranks
 outlines <- list()
 for (row in 1:nrow(highly_correlated)){
   line <- highly_correlated[row, ]
@@ -289,7 +288,7 @@ rfe <- perform_rfe(response = response, base_learner = base_learner, type = type
                    p = p, times = times, 
                    subsets = subsets, data = data,
                    importance = importance,
-                   num.trees = num.trees, parallel = parallel,
+                   num.trees = num.trees, n_cores = n_cores, parallel = parallel,
                    savedir = savedir)
 
 # =================================================================================================== -
@@ -400,7 +399,7 @@ rfe <- perform_rfe(response = response, base_learner = base_learner, type = type
                    p = p, times = times, 
                    subsets = subsets, data = data,
                    importance = importance,
-                   num.trees = num.trees, parallel = parallel,
+                   num.trees = num.trees, n_cores = n_cores, parallel = parallel,
                    savedir = savedir)
 
 # =================================================================================================== -
