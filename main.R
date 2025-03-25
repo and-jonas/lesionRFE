@@ -36,6 +36,7 @@ library(data.table)
 library(ranger)
 library(tidyverse)
 library(doParallel)
+library(doSNOW)
 library(foreach)
 library(corrplot)
 path_to_utils <- "/projects/lesionRFE/" 
@@ -155,11 +156,11 @@ response = target_trait
 base_learner = "ranger"
 type = "regression"
 p = 0.75
-times = 30
+times = 3
 data = data
 importance = "permutation"
 num.trees = 150
-parallel = T
+parallel = F
 savedir = rfe_output_path
 
 # # temporary

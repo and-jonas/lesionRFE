@@ -106,11 +106,8 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
       n_cores <- 24
       
       # Register parallel backend
-      cl <- makeCluster(n_cores)  # Use all but one core
-      registerDoParallel(cl)
-      
-      # Check if parallel processing is active
-      getDoParWorkers()
+      cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core
+      registerDoSNOW(cl)
       
       #tune/train random forest
       fit <- caret::train(formula,
