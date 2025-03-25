@@ -23,7 +23,7 @@
 
 rm(list = ls())
 
-.libPaths("T:/R4Userlibs")
+# .libPaths("T:/R4Userlibs")
 # .libPaths("E:/Rlibs")
 
 list.of.packages <- c("data.table", "doParallel", "caret", "Cubist", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse")
@@ -38,19 +38,17 @@ library(tidyverse)
 library(doParallel)
 library(foreach)
 library(corrplot)
-path_to_utils <- "P:/Public/Jonas/011_STB_leaf_tracking/RScripts/" 
+path_to_utils <- "C:/Users/anjonas/RProjects/lesionRFE/" 
 source(paste0(path_to_utils, "rfe_PAR.R"))
-source("P:/Public/Jonas/004_ESWW007/RScripts/utils.R")
+source(paste0(path_to_utils, "utils.R"))
+
+base_output_path <- "/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_"
+figure_path <- paste0(base_output_path, "/Figures/")
+path_input_data <- "/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/data/subset_step2.rds"
+run_paths <- paste0(base_output_path, c("/run0", "/run1", "/run2"))
 
 # define scenario
 target_trait <- "diff_area_pp_y_norm_chr"
-
-# set paths
-base_output_path <- paste0("P:/Public/Jonas/011_STB_leaf_tracking/Results/RFE_", target_trait)
-figure_path <- paste0(base_output_path, "/Figures/")
-run_paths <- paste0(base_output_path, c("/run0", "/run1", "/run2"))
-# path_input_data <- "P:/Public/Jonas/011_STB_leaf_tracking/output/datasets_test/subset_step2.rds"
-path_input_data <- "P:/Public/Jonas/011_STB_leaf_tracking/data/subset_step2.rds"
 
 # make output directories
 for (d in c(base_output_path, figure_path, run_paths)){
