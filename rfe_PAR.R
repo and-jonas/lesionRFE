@@ -59,6 +59,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
   #CV of feature selection
   `%infix%` <- ifelse(parallel, `%dopar%`, `%do%`)
   if(length(index) == 0){
+    print("---All subsets already processed. Moving on. ")
     return(NULL)
   }
     
