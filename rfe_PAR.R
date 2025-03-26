@@ -116,12 +116,12 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
       #define model to fit
       formula <- as.formula(paste(response, " ~ .", sep = ""))
       
-      # Detect number of available cores
-      n_cores <- n_cores
-      
-      # Register parallel backend
-      cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core
-      registerDoSNOW(cl)
+      # Set up cluster unless it already exists
+      if(!(exists("cl") && inherits(cl, "cluster"))){
+        n_cores <- n_cores
+        cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core
+        registerDoSNOW(cl)
+      }
       
       #tune/train random forest
       fit <- caret::train(formula,
