@@ -3,7 +3,7 @@
 
 #HEADER ----
 
-# Author: Jonas Anderegg, ETH Z?rich
+# Author: Jonas Anderegg, ETH Zürich
 # Copyright (C) 2025  ETH Z?rich, Jonas Anderegg (jonas.anderegg@usys.ethz.ch)
 
 # This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ rm(list = ls())
 
 # .libPaths("T:/R4Userlibs")
 # .libPaths("E:/Rlibs")
-.libPaths("/home/anjonas/R4Userlibs")
+# .libPaths("/home/anjonas/R4Userlibs")
 
 list.of.packages <- c("data.table", "doParallel", "caret", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse", "corrplot")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
@@ -47,7 +47,7 @@ source(paste0(path_to_utils, "utils.R"))
 target_trait <- "diff_area_pp_y_norm_chr"
 
 # set paths
-base_output_path <- paste0("/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_", target_trait, "_2")
+base_output_path <- paste0("/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_", target_trait, "_3")
 figure_path <- paste0(base_output_path, "/Figures/")
 path_input_data <- "/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/data/subset_step2.rds"
 run_paths <- paste0(base_output_path, c("/run0", "/run1", "/run2"))
@@ -419,7 +419,7 @@ tidy <- tidy_rfe_output(rfe, base_learner = "ranger")
 # get performance profile
 prof <- plot_perf_profile(tidy[[1]])
 # save plot
-png(paste0(rfe_output_path, "/perf_prof.png"), width = 5, height = 3, units = 'in', res = 300)
+png(paste0(rfe_output_path, "/perf_prof.png"), width = 5, height = 5, units = 'in', res = 300)
 plot(prof)
 dev.off()
 

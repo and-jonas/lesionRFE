@@ -280,27 +280,30 @@ tidy_rfe_output <- function(data, base_learner){
 #Plot performance profiles
 plot_perf_profile <- function(data){
   pd <- position_dodge(0.5) # move them .05 to the left and right
+  colors = c("blue", "orange")
   #plot performance profiles
-  ggplot(data, aes(x = subset_size, y = mean, group = set, colour = set)) +
-    geom_point(position = pd) + geom_line() +
-    ggsci::scale_color_npg() +
-    geom_errorbar(position = pd, aes(ymin = mean - se, ymax = mean + se), width = 1, alpha = 0.5) + 
-    xlab("#Features") + ylab("Accuracy") +
-    # scale_x_continuous(limits = c(-2.5, 32.5)) +
-    # facet_wrap(~algorithm) +
-    theme_bw() +
-    theme(panel.grid = element_blank(),
-          legend.title=element_blank(),
-          plot.title = element_text(size = 15, face = "bold"),
-          strip.text = element_text(face = "bold"))
+  ggplot(data, aes(x = subset_size, y = mean*10000, group = set, color = set)) +
+    geom_point(position = pd, size = 2) +  # Apply dodge to points
+    geom_line() +  # Line shouldn't use dodge
+    geom_errorbar(position = pd, aes(ymin = mean*10000 - se*10000, ymax = mean*10000 + se*10000), width = 1, alpha = 0.5) + 
+    scale_color_manual(values = colors) +  # Assign custom colors
+    xlab("# Features") + 
+    ylab(expression("RMSE (" %*% "10"^-4 * " )")) +
+    theme(
+      legend.title = element_blank(),
+      plot.title = element_text(size = 15, face = "bold"),
+      strip.text = element_text(face = "bold"),
+      legend.position = c(0.8, 0.8),
+      panel.background = element_rect(fill = "#E5E5E5")
+    )
 }
 
 #Plot feature ranks
 plot_feature_ranks <- function(data, top_n){
   data <- data %>% slice(1:top_n)
   ggplot(data, aes(x=order, y=mean)) +
-    geom_point() +
-    geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=0.5) +
+    geom_point(size = 2, pch = 21, bg = 4, col = 1) +
+    geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=0.5) +
     ylab("Feature rank") +
     xlab("Feature")+
     # Add categories to axis
