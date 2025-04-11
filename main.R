@@ -25,7 +25,7 @@ rm(list = ls())
 
 # .libPaths("T:/R4Userlibs")
 # .libPaths("E:/Rlibs")
-# .libPaths("/home/anjonas/R4Userlibs")
+.libPaths("/home/anjonas/R4Userlibs")
 
 list.of.packages <- c("data.table", "doParallel", "caret", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse", "corrplot")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
