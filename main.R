@@ -27,10 +27,11 @@ rm(list = ls())
 # .libPaths("E:/Rlibs")
 .libPaths("/home/anjonas/R4Userlibs")
 
-list.of.packages <- c("data.table", "doParallel", "caret", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse", "corrplot")
+list.of.packages <- c("metrics", "data.table", "doParallel", "caret", "tidyverse", "ranger", "ggplot2", "foreach", "tidyverse", "corrplot")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages, lib = "/home/anjonas/R4Userlibs", dependencies = TRUE, repos='https://stat.ethz.ch/CRAN/')
 
+library(metrics)
 library(caret)
 library(data.table)
 library(ranger)
@@ -47,7 +48,7 @@ source(paste0(path_to_utils, "utils.R"))
 target_trait <- "diff_area_pp_y_norm_chr"
 
 # set paths
-base_output_path <- paste0("/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_", target_trait, "_3")
+base_output_path <- paste0("/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/Results/RFE_", target_trait, "_test")
 figure_path <- paste0(base_output_path, "/Figures/")
 path_input_data <- "/home/anjonas/public/Public/Jonas/011_STB_leaf_tracking/data/subset_step2.rds"
 run_paths <- paste0(base_output_path, c("/run0", "/run1", "/run2"))
@@ -156,7 +157,7 @@ subsets <- c(seq(from = length(data)-1, to = 10, by = -3),
 response = target_trait
 base_learner = "ranger"
 type = "regression"
-p = 0.75
+p = 0.8
 times = 30
 data = data
 importance = "permutation"
@@ -165,12 +166,12 @@ n_cores = 24
 parallel = F
 savedir = rfe_output_path
 
-# # temporary
-# # candidate set of the number of predictors to evaluate
-# data <- data %>% 
-#   dplyr::select(1, lag_min_l_density, lag_y_perimeter_n)
-# subsets <- c(seq(from = length(data)-1, to = 1, by = -1))
-# times = 5
+# temporary
+# candidate set of the number of predictors to evaluate
+data <- data %>%
+  dplyr::select(diff_area_pp_y_norm_chr, lag_lesion_age_gdd, lag_max_dist, mean_interval_rh)
+subsets <- c(seq(from = 3, to = 1, by = -1))
+times = 5
 
 # perform rfe
 rfe <- perform_rfe(response = response, base_learner = base_learner, type = type,
@@ -196,9 +197,12 @@ rfe <- lapply(subset_output_files, readRDS)
 tidy <- tidy_rfe_output(data = rfe, base_learner = "ranger")
 
 # get performance profile
-prof <- plot_perf_profile(tidy[[1]])
+prof_A <- plot_perf_profile(tidy[[1]], metric = "Rsquared")
+prof_B <- plot_perf_profile(tidy[[1]], metric = "RMSE")
+prof <- ggarrange(prof_A, prof_B, nrow = 1)
+
 # save plot
-png(paste0(rfe_output_path, "/perf_prof.png"), width = 5, height = 3, units = 'in', res = 300)
+png(paste0(rfe_output_path, "/perf_prof.png"), width = 10, height = 5, units = 'in', res = 300)
 plot(prof)
 dev.off()
 
@@ -306,9 +310,12 @@ rfe <- lapply(subset_output_files, readRDS)
 tidy <- tidy_rfe_output(rfe, base_learner = "ranger")
 
 # get performance profile
-prof <- plot_perf_profile(tidy[[1]])
+prof_A <- plot_perf_profile(tidy[[1]], metric = "Rsquared")
+prof_B <- plot_perf_profile(tidy[[1]], metric = "RMSE")
+prof <- ggarrange(prof_A, prof_B, nrow = 1)
+
 # save plot
-png(paste0(rfe_output_path, "/perf_prof.png"), width = 5, height = 3, units = 'in', res = 300)
+png(paste0(rfe_output_path, "/perf_prof.png"), width = 10, height = 6, units = 'in', res = 300)
 plot(prof)
 dev.off()
 
@@ -417,9 +424,12 @@ rfe <- lapply(subset_output_files, readRDS)
 tidy <- tidy_rfe_output(rfe, base_learner = "ranger")
 
 # get performance profile
-prof <- plot_perf_profile(tidy[[1]])
+prof_A <- plot_perf_profile(tidy[[1]], metric = "Rsquared")
+prof_B <- plot_perf_profile(tidy[[1]], metric = "RMSE")
+prof <- ggarrange(prof_A, prof_B, nrow = 1)
+
 # save plot
-png(paste0(rfe_output_path, "/perf_prof.png"), width = 5, height = 5, units = 'in', res = 300)
+png(paste0(rfe_output_path, "/perf_prof.png"), width = 10, height = 6, units = 'in', res = 300)
 plot(prof)
 dev.off()
 

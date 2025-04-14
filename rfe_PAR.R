@@ -116,12 +116,12 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
       #define model to fit
       formula <- as.formula(paste(response, " ~ .", sep = ""))
       
-      # Set up cluster unless it already exists
-      if(!(exists("cl") && inherits(cl, "cluster"))){
-        n_cores <- n_cores
-        cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core
-        registerDoSNOW(cl)
-      }
+      # # Set up cluster unless it already exists
+      # if(!(exists("cl") && inherits(cl, "cluster"))){
+      #   n_cores <- n_cores
+      #   cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core
+      #   registerDoSNOW(cl)
+      # }
       
       #tune/train random forest
       fit <- caret::train(formula,
@@ -130,11 +130,11 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                           method = base_learner,
                           tuneGrid = tune_grid,
                           trControl = ctrl,
-                          # num.trees = 150,
-                          # verbose = TRUE,
-                          # importance = "permutation",
-                          # parallel = F)
-                          ...)
+                          num.trees = 150,
+                          verbose = TRUE,
+                          importance = "permutation",
+                          parallel = F)
+                          # ...)
       
       if(type == "regression"){
         #extract predobs of each cv fold
@@ -146,12 +146,14 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                            mean_pred = mean(pred))
         
         #get train performance
-        train_perf[j] <- caret::getTrainPerf(fit)$TrainRMSE
-        #get test performance
-        test_perf[j] <- rmse(test %>% pull(response), caret::predict.train(fit, test))
-        # get null performance (no predictors used)
-        null_perf[j] <- sqrt(mean((mean(predobs$obs) - predobs$obs)^2))
+        train_perf[j] <- list(get_train_performance(obj=fit))
         
+        # get test performance
+        test_perf[j] <- list(get_test_performance(obj=fit, data=test))
+        
+        # get baseline performance
+        null_perf[j] <- list(get_baseline_performance(obj=fit, data=train))
+
       } else if (type == "classification"){
         #get train accuracy
         train_perf[j] <- caret::getTrainPerf(fit)$TrainAccuracy
@@ -227,68 +229,75 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
 
 #Create a tidy output
 tidy_rfe_output <- function(data, base_learner){
+  
   #tidy up list output
-  subsets <- data[[1]][[length(data[[1]])]]
+  subsets <- unlist(data[[1]][[length(data[[1]])]])
   ranks <- lapply(data, "[[", 1) %>% 
     Reduce(function(dtf1, dtf2) full_join(dtf1, dtf2, by = "var"), .) %>% 
     purrr::set_names(., c("var", paste("Resample", 1:length(data), sep = "")))
-  RMSEtrain <- lapply(data, "[[", 2) %>% lapply(., cbind, subsets) %>%
-    lapply(., as_tibble) %>% 
-    Reduce(function(dtf1, dtf2) full_join(dtf1, dtf2, by = "subsets"), .) %>% 
-    dplyr::select(subsets, everything()) %>% 
-    purrr::set_names(c("subset_size", paste("Resample", 1:length(data), sep = "")))
-  RMSEtest <- lapply(data, "[[", 3) %>% lapply(., cbind, subsets) %>%
-    lapply(., as_tibble) %>% 
-    Reduce(function(dtf1, dtf2) full_join(dtf1, dtf2, by = "subsets"), .) %>% 
-    dplyr::select(subsets, everything()) %>% 
-    purrr::set_names(c("subset_size", paste("Resample", 1:length(data), sep = "")))
-  RMSEnull <- lapply(data, "[[", 4) %>% lapply(., "[[", 1) %>% 
-    unlist()
-  Nullperf <- tibble(subset_size = 0, 
-                     mean = mean(RMSEnull),
-                     sd = sd(RMSEnull),
-                     se = se(RMSEnull),
-                     set = "Train")
-    
-  #average across resamples, get sd and means
-  Trainperf <- RMSEtrain %>%
-    gather(resample, RMSE, contains("Resample")) %>%
-    unnest(c(subset_size, RMSE)) %>% 
-    group_by(subset_size) %>%
-    arrange(subset_size) %>%
-    summarise_at(vars(RMSE), funs(mean, sd, se), na.rm = TRUE) %>%
-    mutate(set = "Train")
-  Trainperf <- bind_rows(Nullperf, Trainperf)
-  Testperf <- RMSEtest %>% 
-    gather(resample, RMSE, contains("Resample")) %>%
-    group_by(subset_size) %>%
-    unnest(c(subset_size, RMSE)) %>% 
-    arrange(subset_size) %>%
-    summarise_at(vars(RMSE), funs(mean, sd, se), na.rm = TRUE) %>%
-    mutate(set = "Test")
-  Perf <- bind_rows(Trainperf, Testperf) %>% mutate(algorithm = base_learner)
-  #average ranks
+  
+  # get performance metrics
+  Perf <- list()
+  for(i in c(1:3)){
+    Perf[[i]] <- lapply(data, "[[", i+1) %>% lapply(., cbind, subsets) %>%
+      lapply(., as_tibble) %>% 
+      Reduce(function(dtf1, dtf2) full_join(dtf1, dtf2, by = "subsets"), .) %>% 
+      dplyr::select(subsets, everything()) %>% 
+      purrr::set_names(c("subset_size", paste("Resample", 1:length(data), sep = ""))) %>% 
+      gather(resample, RMSE, contains("Resample")) %>%
+      unnest(c(subset_size, RMSE)) %>% 
+      group_by(subset_size) %>%
+      arrange(subset_size) %>% ungroup()
+  }
+  
+  # summarise
+  P <- Perf %>% 
+    bind_rows() %>% 
+    dplyr::select(-resample) %>% 
+    dplyr::filter(Type != "Null") %>% 
+    pivot_longer(cols = RMSE:Rsquared) %>% 
+    group_by(subset_size, Type, name) %>% 
+    summarise(mean = mean(value),
+              sd = sd(value),
+              se = se(value))
+  N_P <- Perf %>% 
+    bind_rows() %>%
+    dplyr::filter(Type == "Null") %>% 
+    dplyr::select(-resample) %>% 
+    pivot_longer(cols = RMSE:Rsquared) %>% 
+    group_by(Type, name) %>% 
+    summarise(mean = mean(value),
+              sd = sd(value),
+              se = se(value)) %>% 
+    add_column("subset_size" = 0) %>% 
+    relocate("subset_size", .before = "Type")
+  
+  P <- bind_rows(N_P, P)
+  
+  # average ranks
   robranks <- ranks %>% 
     gather(resample, rank, contains("Resample")) %>%
     group_by(var) %>%
     summarise_at(vars(rank), funs(mean, sd, se), na.rm = TRUE) %>%
     arrange(mean)
-  tidy_out <- list(Perf, robranks)
+  tidy_out <- list(P, robranks)
   return(tidy_out)
 }
 
 #Plot performance profiles
-plot_perf_profile <- function(data){
+plot_perf_profile <- function(data, metric){
   pd <- position_dodge(0.5) # move them .05 to the left and right
-  colors = c("blue", "orange")
+  colors = c("blue", "orange", "black")
+  r2 <- data %>% filter(name == metric)
+  ylabel <- ifelse(metric == "Rsquared", expression("R"^2), "RMSE")
   #plot performance profiles
-  ggplot(data, aes(x = subset_size, y = mean*10000, group = set, color = set)) +
+  ggplot(r2, aes(x = subset_size, y = mean, group = Type, color = Type)) +
     geom_point(position = pd, size = 2) +  # Apply dodge to points
     geom_line() +  # Line shouldn't use dodge
-    geom_errorbar(position = pd, aes(ymin = mean*10000 - se*10000, ymax = mean*10000 + se*10000), width = 1, alpha = 0.5) + 
+    geom_errorbar(position = pd, aes(ymin = mean - se, ymax = mean + se), width = 1, alpha = 0.5) + 
     scale_color_manual(values = colors) +  # Assign custom colors
     xlab("# Features") + 
-    ylab(expression("RMSE (" %*% "10"^-4 * " )")) +
+    ylab(ylabel) +
     theme(
       legend.title = element_blank(),
       plot.title = element_text(size = 15, face = "bold"),
@@ -338,6 +347,33 @@ rmse <- function(actual, predicted) {
 
 se <- function(x, na.rm = TRUE) sqrt(var(x)/length(x))
 
+get_train_performance <- function(obj){
+  perf <- caret::getTrainPerf(obj)
+  rmse_train <- unname(perf["TrainRMSE"])
+  r2_train <- unname(perf["TrainRsquared"])
+  return(data.frame("Type" = "Train", "RMSE" = rmse_train, "Rsquared" = r2_train))
+}
 
 
+get_baseline_performance <- function(obj, data){
+  ind_train <- obj$control$index
+  ind_test <- obj$control$indexOut
+  baseline_preds  <- lapply(c(1:length(ind_train)), function(i){
+    mean_train <- mean(data[ind_train[[i]], ][[response]])
+    obs <- data[ind_test[[i]], ][[response]]
+    data.frame(rowIndex = ind_test[[i]],
+               obs = obs,
+               mean_pred = rep(mean_train, length(ind_test[[i]])))
+  })
+  baseline_predobs <- do.call(rbind, baseline_preds)
+  r2_baseline <- cor(baseline_predobs$obs, baseline_predobs$mean_pred)^2
+  rmse_baseline <- rmse(baseline_predobs$obs, baseline_predobs$mean_pred)
+  return(data.frame("Type" = "Null", "RMSE" = rmse_baseline, "Rsquared" = r2_baseline))
+}
+
+get_test_performance <- function(obj=fit, data=test){
+  r2_test <- cor(data[[response]], caret::predict.train(obj, data))^2
+  rmse_test <- rmse(data[[response]], caret::predict.train(obj, data))
+  return(data.frame("Type" = "Test", "RMSE" = rmse_test, "Rsquared" = r2_test))
+}
 #====================================================================================== -
