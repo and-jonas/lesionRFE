@@ -242,6 +242,9 @@ highly_correlated <- as.data.frame(as.table(M)) %>%
   arrange(desc(abs(Freq))) %>% 
   as.data.frame()
 
+# stop if there are no highly correlated variables left
+stopifnot(nrow(highly_correlated) > 0)
+
 # add variable to retain (lower mean rank)
 outlines <- list()
 for (row in 1:nrow(highly_correlated)){
@@ -354,6 +357,9 @@ highly_correlated <- as.data.frame(as.table(M)) %>%
   slice(1) %>% ungroup() %>% 
   arrange(desc(abs(Freq))) %>% 
   as.data.frame()
+
+# stop if there are no highly correlated variables left
+stopifnot(nrow(highly_correlated) > 0)
 
 # add variable to retain (lower mean rank)
 ranks
