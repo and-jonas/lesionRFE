@@ -151,7 +151,7 @@ rfe_output_path <- paste0(base_output_path, "/run0")
 
 # candidate set of the number of predictors to evaluate
 subsets <- c(seq(from = length(data)-1, to = 10, by = -3),
-             seq(from = 9, to = 1, by = -1))
+             seq(from = 11, to = 1, by = -1))
 
 # define all parameters for rfe
 response = target_trait
@@ -166,12 +166,12 @@ n_cores = 24
 parallel = F
 savedir = rfe_output_path
 
-# temporary
-# candidate set of the number of predictors to evaluate
-data <- data %>%
-  dplyr::select(diff_area_pp_y_norm_chr, 2:6)
-subsets <- c(seq(from = 5, to = 1, by = -1))
-times = 3
+# # temporary
+# # candidate set of the number of predictors to evaluate
+# data <- data %>%
+#   dplyr::select(diff_area_pp_y_norm_chr, 2:6)
+# subsets <- c(seq(from = 5, to = 1, by = -1))
+# times = 3
 
 # perform rfe
 rfe <- perform_rfe(response = response, base_learner = base_learner, type = type,
