@@ -130,11 +130,11 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                           method = base_learner,
                           tuneGrid = tune_grid,
                           trControl = ctrl,
-                          num.trees = 150,
-                          verbose = TRUE,
-                          importance = "permutation",
-                          parallel = F)
-                          # ...)
+                          # num.trees = 150,
+                          # verbose = TRUE,
+                          # importance = "permutation",
+                          # parallel = F)
+                          ...)
       
       if(type == "regression"){
         #extract predobs of each cv fold
