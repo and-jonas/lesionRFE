@@ -169,9 +169,10 @@ savedir = rfe_output_path
 # temporary
 # candidate set of the number of predictors to evaluate
 data <- data %>%
-  dplyr::select(diff_area_pp_y_norm_chr, lag_lesion_age_gdd, lag_max_dist, mean_interval_rh)
-subsets <- c(seq(from = 3, to = 1, by = -1))
-times = 5
+  dplyr::select(diff_area_pp_y_norm_chr, lag_min_p_density, lag_lesion_age_gdd) %>% 
+  sample_n(5000)
+subsets <- c(seq(from = 2, to = 1, by = -1))
+times = 3
 
 # perform rfe
 rfe <- perform_rfe(response = response, base_learner = base_learner, type = type,

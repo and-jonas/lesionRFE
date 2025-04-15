@@ -115,7 +115,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
       
       #define model to fit
       formula <- as.formula(paste(response, " ~ .", sep = ""))
-      
+
       # Set up cluster unless it already exists
       if(!(exists("cl") && inherits(cl, "cluster"))){
         n_cores <- n_cores
@@ -130,11 +130,11 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                           method = base_learner,
                           tuneGrid = tune_grid,
                           trControl = ctrl,
-                          # num.trees = 150,
-                          # verbose = TRUE,
-                          # importance = "permutation",
-                          # parallel = F)
-                          ...)
+                          num.trees = 150,
+                          verbose = TRUE,
+                          importance = "permutation",
+                          parallel = F)
+                          # ...)
       
       if(type == "regression"){
         #extract predobs of each cv fold
@@ -345,13 +345,18 @@ rmse <- function(actual, predicted) {
   sqrt(mean((actual - predicted) ^ 2))
 }
 
+mae <- function(actual, predicted){
+  mean(abs(actual - predicted))
+}
+
 se <- function(x, na.rm = TRUE) sqrt(var(x)/length(x))
 
 get_train_performance <- function(obj){
   perf <- caret::getTrainPerf(obj)
-  rmse_train <- unname(perf["TrainRMSE"])
-  r2_train <- unname(perf["TrainRsquared"])
-  return(data.frame("Type" = "Train", "RMSE" = rmse_train, "Rsquared" = r2_train))
+  rmse <- unname(perf["TrainRMSE"])
+  mae <- unname(perf["TrainMAE"])
+  r2 <- unname(perf["TrainRsquared"])
+  return(data.frame("Type" = "Train", "RMSE" = rmse, "MAE" = mae, "Rsquared" = r2))
 }
 
 
@@ -366,14 +371,16 @@ get_baseline_performance <- function(obj, data){
                mean_pred = rep(mean_train, length(ind_test[[i]])))
   })
   baseline_predobs <- do.call(rbind, baseline_preds)
-  r2_baseline <- cor(baseline_predobs$obs, baseline_predobs$mean_pred)^2
-  rmse_baseline <- rmse(baseline_predobs$obs, baseline_predobs$mean_pred)
-  return(data.frame("Type" = "Null", "RMSE" = rmse_baseline, "Rsquared" = r2_baseline))
+  r2 <- cor(baseline_predobs$obs, baseline_predobs$mean_pred)^2
+  rmse <- rmse(baseline_predobs$obs, baseline_predobs$mean_pred)
+  mae <- mae(baseline_predobs$obs, baseline_predobs$mean_pred)
+  return(data.frame("Type" = "Null", "RMSE" = rmse, "MAE" = mae, "Rsquared" = r2))
 }
 
 get_test_performance <- function(obj=fit, data=test){
-  r2_test <- cor(data[[response]], caret::predict.train(obj, data))^2
-  rmse_test <- rmse(data[[response]], caret::predict.train(obj, data))
-  return(data.frame("Type" = "Test", "RMSE" = rmse_test, "Rsquared" = r2_test))
+  r2 <- cor(data[[response]], caret::predict.train(obj, data))^2
+  rmse <- rmse(data[[response]], caret::predict.train(obj, data))
+  mae <- mae(data[[response]], caret::predict.train(obj, data))
+  return(data.frame("Type" = "Test", "RMSE" = rmse, "MAE" = mae, "Rsquared" = r2))
 }
 #====================================================================================== -
