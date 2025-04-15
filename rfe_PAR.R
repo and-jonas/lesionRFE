@@ -289,12 +289,12 @@ plot_perf_profile <- function(data, metric){
   pd <- position_dodge(0.5) # move them .05 to the left and right
   colors = c("blue", "orange", "black")
   r2 <- data %>% filter(name == metric)
-  ylabel <- ifelse(metric == "Rsquared", expression("R"^2), "RMSE")
+  ylabel <- ifelse(metric == "Rsquared", expression("R"^2), metric)
   #plot performance profiles
   ggplot(r2, aes(x = subset_size, y = mean, group = Type, color = Type)) +
     geom_point(position = pd, size = 2) +  # Apply dodge to points
     geom_line() +  # Line shouldn't use dodge
-    geom_errorbar(position = pd, aes(ymin = mean - se, ymax = mean + se), width = 1, alpha = 0.5) + 
+    geom_errorbar(position = pd, aes(ymin = mean - sd, ymax = mean + sd), width = 1, alpha = 0.5) + 
     scale_color_manual(values = colors) +  # Assign custom colors
     xlab("# Features") + 
     ylab(ylabel) +
@@ -358,7 +358,6 @@ get_train_performance <- function(obj){
   r2 <- unname(perf["TrainRsquared"])
   return(data.frame("Type" = "Train", "RMSE" = rmse, "MAE" = mae, "Rsquared" = r2))
 }
-
 
 get_baseline_performance <- function(obj, data){
   ind_train <- obj$control$index
