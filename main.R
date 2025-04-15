@@ -169,8 +169,8 @@ savedir = rfe_output_path
 # temporary
 # candidate set of the number of predictors to evaluate
 data <- data %>%
-  dplyr::select(diff_area_pp_y_norm_chr, 2:5) %>% 
-subsets <- c(seq(from = 5, to = 1, by = -1))
+  dplyr::select(diff_area_pp_y_norm_chr, 2:5)
+subsets <- c(seq(from = 2, to = 1, by = -1))
 times = 3
 
 # perform rfe
