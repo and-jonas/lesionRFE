@@ -532,6 +532,13 @@ ctrl <- caret::trainControl(method = "repeatedcv",
 #define model to fit
 formula <- as.formula(paste(response, " ~ .", sep = ""))
 
+# Set up cluster unless it already exists
+if(!(exists("cl") && inherits(cl, "cluster"))){
+  n_cores <- 32
+  cl <- makeCluster(n_cores, type = "SOCK")  # Use all but one core
+  registerDoSNOW(cl)
+}
+
 #tune/train random forest
 fit <- caret::train(formula,
                     data = data,
@@ -541,6 +548,11 @@ fit <- caret::train(formula,
                     trControl = ctrl,
                     importance = "permutation")
 saveRDS(fit, paste0(base_output_path, "/final_rf_fit.rds"))
+
+# Stop cluster after all iterations are done
+if (parallel && exists("cl") && inherits(cl, "cluster")) {
+  stopCluster(cl)
+}
 
 # re-load and evaluate
 fit <- readRDS(paste0(base_output_path, "/final_rf_fit.rds"))

@@ -225,6 +225,11 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
       paste0(savedir, "/out_subset_", i, ".rds"))
     return(list(ranks, train_perf, test_perf, null_perf, npred))
   } # END OF OUTER RESAMPLING
+  
+  # Stop cluster after all iterations are done
+  if (parallel && exists("cl") && inherits(cl, "cluster")) {
+    stopCluster(cl)
+  }
 }
 
 # Create a tidy output
