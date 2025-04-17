@@ -448,290 +448,100 @@ png(paste0(rfe_output_path, "/feature_ranks.png"), width = 8, height = 4, units 
 plot(ranksplot)
 dev.off()
 
-# # =================================================================================================== -
-# # =================================================================================================== -
-# 
-# # END WORK START FUN
-# 
-# # =================================================================================================== -
-# # >> sequential subset plotting ----
-# # =================================================================================================== - 
-# 
-# library(viridis)
-# 
-# # single rf model fit
-# train <- data
-# mtry <- ceiling(seq(ceiling(0.1*length(train[-1])), ceiling(0.66*length(train[-1])), len = 6)) %>% unique()
-# min.node.size <- c(5)
-# num.trees = 150
-# response = target_trait
-# base_learner = "ranger"
-# tune_grid <- expand.grid(mtry = mtry,
-#                          splitrule = "variance",
-#                          min.node.size = min.node.size) 
-# 
-# #define inner resampling procedure
-# ctrl <- caret::trainControl(method = "repeatedcv",
-#                             number = 7,
-#                             rep = 1,
-#                             verbose = TRUE,
-#                             allowParallel = TRUE,
-#                             savePredictions = TRUE,
-#                             classProbs = FALSE)
-# 
-# #define model to fit
-# formula <- as.formula(paste(response, " ~ .", sep = ""))
-# 
-# #tune/train random forest
-# fit <- caret::train(formula,
-#                     data = train,
-#                     preProc = c("center", "scale"),
-#                     method = base_learner,
-#                     tuneGrid = tune_grid,
-#                     trControl = ctrl,
-#                     num.trees = 150,
-#                     importance = "permutation")
-# 
-# saveRDS(fit, paste0(base_output_path, "/rf_fit.rds"))
-# 
-# # =================================================================================================== - 
-# 
-# fit <- readRDS(paste0(base_output_path, "/rf_fit.rds"))
-# imp <- varImp(fit)$importance %>% 
-#   rownames_to_column("var") %>% as_tibble()
-# 
-# # Sum up importance for factor levels
-# if(any(sapply(train, is.factor))){
-#   fct_chr_cols <- train %>%
-#     select(where(~ is.factor(.) || is.character(.))) %>%
-#     colnames()
-#   # remove single factor level importance values
-#   drop_fct_imp <- paste0("^", fct_chr_cols, collapse = "|")
-#   drop_fct_imp <- paste(imp$var[grep(drop_fct_imp, imp$var)], collapse = "|")
-#   # Aggregate importance for factor variables
-#   fct_agg_imp <- imp %>%
-#     mutate(
-#       var = map_chr(imp$var, function(var) {
-#         # Match variable name with factor column prefixes
-#         match <- fct_chr_cols[which(startsWith(var, fct_chr_cols))]
-#         if (length(match) > 0) match else NA_character_
-#       })
-#     ) %>%
-#     group_by(var) %>%
-#     summarize(
-#       Overall = sum(Overall, na.rm = TRUE)          ) %>%
-#     filter(!is.na(var))  # Remove non-factor variables
-#   # combine factor importance with numeric variable importance
-#   imp <- imp[!grepl(drop_fct_imp, imp$var),]
-#   imp <- bind_rows(imp, fct_agg_imp)
-# }
-# 
-# # imitate the ranks table based on the single run
-# imp <- imp %>% arrange(desc(Overall))
-# imp$order <- c(0:-46)
-# imp$mean <- 1:47
-# imp$sd <- rep(NA, 47)
-# imp$se <- rep(NA, 47)
-# imp <- imp %>% dplyr::select(order, var, mean, sd, se)
-# 
-# # assign each variable a specific color
-# color_list <- viridis_pal()(nrow(imp))
-# label_colors <- c()
-# for (j in seq_along(imp$var)) {
-#   label_colors[imp$var[j]] <- color_list[j]
-# }
-# 
-# # =================================================================================================== - 
-# 
-# # First, make the basic plot based on the single rf run
-# 
-# rfe_output_path <- paste0(base_output_path, "/run0")
-# output_path <- paste0(rfe_output_path, "/sequential")
-# 
-# plot_feature_ranks <- function(data, top_n, label_colors) {
-#   
-#   data <- data %>% slice(1:top_n)
-#   
-#   ggplot(data, aes(x = order, y = mean)) +
-#     geom_point() +
-#     geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.5) +
-#     ylab("Feature rank") +
-#     xlab("Feature") +
-#     # Add categories to axis
-#     scale_x_continuous(
-#       breaks = data$order,
-#       labels = data$var,
-#       expand = c(0, 0)
-#     ) +
-#     coord_flip() +
-#     theme_bw() %+replace%
-#     theme(
-#       axis.title.y = element_blank(),
-#       plot.title = element_text(size = 15, face = "bold"),
-#       panel.grid.minor = element_blank(),
-#       panel.grid.major.x = element_blank(),
-#       # Dynamically assign colors to y-axis text
-#       axis.text.y = element_text(face = "bold"),
-#       axis.text.y.left = element_text(color = label_colors[data$var])
-#     )
-# }
-# 
-# # null plot (single rf run)
-# ranksplot <- plot_feature_ranks(data=imp, top_n = nrow(imp), label_colors=label_colors)
-# png(paste0(output_path, "/feature_ranks_0.png"), width = 8, height = 6, units = 'in', res = 300)
-# plot(ranksplot)
-# dev.off()
-# 
-# # Then make all plots including increasingly more RFE runs
-# # load rfe output
-# subset_output_files <- list.files(rfe_output_path, 
-#                                   pattern = ".rds",
-#                                   full.names = T)
-# 
-# for (i in 1:length(subset_output_files)) {
-#   
-#   rfe <- lapply(subset_output_files[1:i], readRDS)
-#   
-#   # create a tidy output
-#   tidy <- tidy_rfe_output(rfe, base_learner = "ranger")
-#   
-#   # get performance profile
-#   prof <- plot_perf_profile(tidy[[1]])
-#   prof <- prof +
-#     scale_y_continuous(limits = c(4, 6.5))
-#   # save plot
-#   png(paste0(output_path, "/perf_prof_", i, ".png"), width = 5, height = 3, units = 'in', res = 300)
-#   plot(prof)
-#   dev.off()
-#   
-#   # get feature ranks
-#   ranks <- tidy[[2]] %>% tibble::rowid_to_column("order") %>% 
-#     mutate(order = as.numeric(1-order))
-#   ranksplot <- plot_feature_ranks(ranks, top_n = nrow(ranks), label_colors=label_colors)
-#   # save plot
-#   png(paste0(output_path, "/feature_ranks_", i, ".png"), width = 8, height = 6, units = 'in', res = 300)
-#   plot(ranksplot)
-#   dev.off()
-# }
-# 
-# # =================================================================================================== - 
-# # predicted vs observed for the final model ----
-# # =================================================================================================== - 
-# 
-# library(ggpubr)
-# library(ggpmisc)
-# 
-# # load rfe output
-# rfe_output_path <- paste0(base_output_path, "/run2")
-# subset_output_files <- list.files(rfe_output_path, 
-#                                   pattern = "[0-9].rds",
-#                                   full.names = T)
-# rfe <- lapply(subset_output_files, readRDS)
-# 
-# # create a tidy output
-# tidy <- tidy_rfe_output(rfe, base_learner = "ranger")
-# 
-# # get feature ranks
-# ranks <- tidy[[2]] %>% tibble::rowid_to_column("order") %>% 
-#   mutate(order = as.numeric(1-order))
-# 
-# # forward
-# R <- list()
-# for (j in 1:12){
-#   r <- vector()
-#   for (i in 1:nrow(ranks)){
-#   # for (i in 1:5){
-#     top_n <- paste0(ranks$var[1:i], collapse = "|")
-#     top_n <- paste(target_trait, top_n, sep = "|")
-#     
-#     # single rf model fit
-#     train <- data[, grepl(top_n, colnames(data))]
-#     mtry <- ceiling(seq(ceiling(0.1*length(train[-1])), ceiling(0.66*length(train[-1])), len = 6)) %>% unique()
-#     min.node.size <- c(5)
-#     num.trees = 150
-#     response = target_trait
-#     base_learner = "ranger"
-#     tune_grid <- expand.grid(mtry = mtry,
-#                              splitrule = "variance",
-#                              min.node.size = min.node.size) 
-#     
-#     #define inner resampling procedure
-#     ctrl <- caret::trainControl(method = "repeatedcv",
-#                                 number = 7,
-#                                 rep = 1,
-#                                 verbose = TRUE,
-#                                 allowParallel = TRUE,
-#                                 savePredictions = TRUE,
-#                                 classProbs = FALSE)
-#     
-#     #define model to fit
-#     formula <- as.formula(paste(response, " ~ .", sep = ""))
-#     
-#     #tune/train random forest
-#     fit <- caret::train(formula,
-#                         data = train,
-#                         preProc = c("center", "scale"),
-#                         method = base_learner,
-#                         tuneGrid = tune_grid,
-#                         trControl = ctrl,
-#                         num.trees = 150,
-#                         importance = "permutation")
-#     
-#     predobs_cv <- plyr::match_df(fit$pred, fit$bestTune, on = names(fit$bestTune))
-#     #Average predictions of the held out samples;
-#     predobs <- predobs_cv %>% 
-#       group_by(rowIndex) %>% 
-#       dplyr::summarize(obs = mean(obs),
-#                        mean_pred = mean(pred))
-#     
-#     r[i] <- cor(predobs$obs, predobs$mean_pred)
-#     
-#     # Pairwise correlations
-#     p <- ggplot(data = predobs, aes(x = mean_pred, y = obs)) +
-#       geom_abline(intercept = 0, slope = 1) +
-#       geom_smooth(method = "lm") +
-#       geom_point(size = 2) +
-#       # stat_correlation(aes(label = after_stat(cor)), size = 3, geom = "label_npc", alpha = 0.1) +
-#       stat_correlation(mapping = use_label(c("R", "P", "n")), size = 3, geom = "label_npc") +
-#       xlab("predicted") + ylab("observed") +
-#       scale_x_continuous(limits = c(-0.0025, 0.0075)) +
-#       theme(panel.grid = element_line(linewidth = 0.2),
-#             strip.background = element_blank(),
-#             panel.background = element_rect(fill = "#ebedf0"))
-#     png(paste0(rfe_output_path, "/predobs/predobs_top_", i, ".png"), width = 5, height = 3, units = 'in', res = 300)
-#     plot(p)
-#     dev.off()
-#     
-#   }
-#   
-#   # collect all r
-#   R[[j]] <- r
-#   
-# }
-# 
-# saveRDS(R, paste0(rfe_output_path, "/predobs/R.rds"))
-# 
-# # Convert list to tibble
-# result <- as_tibble(setNames(R, paste0("V", seq_along(R))))
-# 
-# # Compute mean and SE per row
-# df_summary <- result %>%
-#   rowwise() %>%
-#   mutate(
-#     mean = mean(as.numeric(c_across(everything())), na.rm = TRUE),
-#     SD = sd(as.numeric(c_across(everything())), na.rm = TRUE) 
-#   ) %>% 
-#   ungroup() %>% 
-#   rownames_to_column() %>% 
-#   mutate(rowname= as.numeric(rowname))
-# 
-# pd <- position_dodge(0.5) # move them .05 to the left and right
-# ggplot(df_summary, aes(x = rowname, y = mean)) +
-#   geom_point() +
-#   geom_line() +
-#   geom_errorbar(position = pd, aes(ymin = mean - SD, ymax = mean + SD), width = 1, alpha = 0.5) +
-#   scale_y_continuous(limits = c(0, 0.5))
-# 
-# 
-# 
-# 
+# plot rank distribution across subsets
+
+subsets <- rfe[[1]][[length(rfe[[1]])]]
+ranks <- lapply(rfe, "[[", 1) %>% 
+  Reduce(function(dtf1, dtf2) full_join(dtf1, dtf2, by = "var"), .) %>% 
+  purrr::set_names(., c("var", paste("Resample", 1:length(rfe), sep = "")))
+
+robranks <- ranks %>% 
+  gather(resample, rank, contains("Resample")) %>%
+  group_by(var) %>%
+  summarise_at(vars(rank), funs(mean, sd, se), na.rm = TRUE) %>%
+  arrange(mean)
+
+# Reshape the data to long format
+df_long <- ranks %>%
+  pivot_longer(cols = starts_with("Resample"), names_to = "Resample", values_to = "Value") %>%
+  mutate(var = factor(var, levels = robranks$var))  # Convert to factor with custom order
+
+# Calculate the number of unique values per variable
+df_long <- df_long %>%
+  group_by(var) %>%
+  mutate(unique_vals = n_distinct(Value)) %>%
+  ungroup()
+
+pp <- ggplot(df_long, aes(x = Value)) +
+  scale_x_continuous(limits = c(0, 20)) +
+  geom_density(alpha = 0.2, fill = "black", data = subset(df_long, unique_vals > 1)) +  # Only plot density for variables with >1 value
+  geom_point(alpha = 0.2, data = subset(df_long, unique_vals == 1), aes(x = Value, y = 0), shape = 21, size = 2.5, color = "black", fill = "black") +  facet_grid(rows = vars(var), scales = "free_y", switch = "y") +  # Use facet_grid to allow rotated labels
+  labs(x = "Rank", fill = "Variable") +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  # Hide legend
+    strip.placement = "outside",  # Place strip labels outside plot panels
+    strip.text.y.left = element_text(angle = 0, hjust = 1, size = 5),  # Correctly rotate strip labels
+    axis.text.y = element_blank(),  # Remove y-axis tick labels
+    axis.ticks.y = element_blank(),  # Remove y-axis ticks
+    panel.spacing = unit(0, "lines"),  # Remove space between facets
+    strip.background = element_blank(),  # Remove background from strip labels
+    panel.grid = element_blank(),
+    axis.title.y = element_blank()
+  )
+
+png(paste0(figure_path, "ranks_distr.png"), width = 3.5, height = 4, units = 'in', res = 400)
+plot(pp)
+dev.off()
+
+# ============================================================================== -
+# FINAL MODEL ----
+# ============================================================================== -
+
+# get top 20 features
+features <- robranks$var[1:20]
+
+# get corresponding subset of the data
+data <- readRDS(paste0(base_output_path, "/run1/reduced_traindat.rds"))
+data <- data %>% 
+  dplyr::select(diff_area_pp_y_norm_chr, all_of(features))
+
+# hyper-parameters
+mtry <- ceiling(seq(ceiling(0.1*length(data[-1])), ceiling(0.66*length(data[-1])), len = 6)) %>% unique()
+min.node.size = c(1, 3, 5, 10, 20)
+sample.fraction = c(0.5, 0.7, 0.9, 1.0)
+num.trees = c(75, 150, 250, 500)
+splitrule = c("variance", "extratrees", "maxstat")
+tune_grid <- expand.grid(
+  mtry = mtry,
+  splitrule = c("variance", "extratrees"),
+  min.node.size = c(1, 3, 5, 10)
+)
+response = target_trait
+base_learner = "ranger"
+
+#define inner re-sampling procedure
+ctrl <- caret::trainControl(method = "repeatedcv",
+                            number = 10,
+                            rep = 5,
+                            verbose = TRUE,
+                            allowParallel = TRUE,
+                            savePredictions = TRUE,
+                            classProbs = FALSE)
+
+#define model to fit
+formula <- as.formula(paste(response, " ~ .", sep = ""))
+
+#tune/train random forest
+fit <- caret::train(formula,
+                    data = data,
+                    preProc = c("center", "scale"),
+                    method = base_learner,
+                    tuneGrid = tune_grid,
+                    trControl = ctrl,
+                    importance = "permutation")
+saveRDS(fit, paste0(base_output_path, "/final_rf_fit.rds"))
+
+# re-load and evaluate
+fit <- readRDS(paste0(base_output_path, "/final_rf_fit.rds"))
+caret::getTrainPerf(fit)

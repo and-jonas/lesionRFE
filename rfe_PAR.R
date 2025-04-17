@@ -48,7 +48,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
   available_output <- list.files(savedir, pattern = "[0-9].rds")
   processed_subset <- as.numeric(gsub("\\D+", "", available_output))
   
-  #create folds for repeated n-fold cross validation
+  # create folds for repeated n-fold cross validation
   set.seed(123)
   index <- caret::createDataPartition(pull(data[response]), p = p, times = times, groups = ifelse(is.numeric(groups), groups, 2))
   
@@ -62,8 +62,8 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
     return(NULL)
   }
   
-  #outer resampling, using the folds
-  #CV of feature selection
+  # outer resampling, using the folds
+  # CV of feature selection
   `%infix%` <- ifelse(parallel, `%dopar%`, `%do%`)
   foreach(i=1:length(index)) %infix% {
 
@@ -75,22 +75,22 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
     train <- data[ind,]
     test <- data[-ind, ]
     
-    #for each subset of decreasing size
-    #tune/train rf and select variables to retain
+    # for each subset of decreasing size
+    # tune/train rf and select variables to retain
     keep_vars <- drop_vars <- test_perf <- train_perf <- null_perf <- npred <- NULL
     for(j in 1:length(subsets)){
       
-      #define new training data
-      #except for first iteration, where the full data set ist used
+      # define new training data
+      # except for first iteration, where the full data set ist used
       if(exists("newtrain")) {train = newtrain}
       
-      #Verbose iter
+      # track progress
       print(paste("==> subset size = ", length(train)-1, sep = ""))
       
-      #define tune grid
+      # define tune grid
       if(base_learner == "ranger"){
-        #adjust mtry parameter to decreasing predictor set
-        #maximum mtry at 200
+        # adjust mtry parameter to decreasing predictor set
+        # maximum mtry at 200
         mtry <- ceiling(seq(ceiling(0.1*length(train[-1])), ceiling(0.66*length(train[-1])), len = 6)) %>% unique()
         if(any(mtry > 200)){
           mtry <- mtry[-which(mtry >= 200)]
@@ -104,7 +104,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                                  neighbors = c(0))
       }
       
-      #define inner resampling procedure
+      # define inner resampling procedure
       ctrl <- caret::trainControl(method = "repeatedcv",
                                   number = 7,
                                   rep = 1,
@@ -113,7 +113,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                                   savePredictions = TRUE,
                                   classProbs = ifelse(type == "classification", TRUE, FALSE))
       
-      #define model to fit
+      # define model to fit
       formula <- as.formula(paste(response, " ~ .", sep = ""))
 
       # Set up cluster unless it already exists
@@ -123,7 +123,7 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
         registerDoSNOW(cl)
       }
       
-      #tune/train random forest
+      # tune/train random forest
       fit <- caret::train(formula,
                           data = train,
                           preProc = c("center", "scale"),
@@ -137,15 +137,15 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
                           ...)
       
       if(type == "regression"){
-        #extract predobs of each cv fold
+        # extract predobs of each cv fold
         predobs_cv <- plyr::match_df(fit$pred, fit$bestTune, on = names(fit$bestTune))
-        #Average predictions of the held out samples;
+        # Average predictions of the held out samples;
         predobs <- predobs_cv %>% 
           group_by(rowIndex) %>% 
           dplyr::summarize(obs = mean(obs),
                            mean_pred = mean(pred))
         
-        #get train performance
+        # get train performance
         train_perf[j] <- list(get_train_performance(obj=fit))
         
         # get test performance
@@ -155,25 +155,25 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
         null_perf[j] <- list(get_baseline_performance(obj=fit, data=train))
 
       } else if (type == "classification"){
-        #get train accuracy
+        # get train accuracy
         train_perf[j] <- caret::getTrainPerf(fit)$TrainAccuracy
         #get test accuracy
         test_perf[j] <- get_acc(fit, test, response = response)
       }
       
-      #number of preds used
+      # number of preds used
       npred[[j]] <- length(train)-1
       
-      #extract retained variables
-      #assign ranks
-      #define reduced training data set
+      # extract retained variables
+      # assign ranks
+      # define reduced training data set
       if(j < length(subsets)){
-        #extract top variables to keep for next iteration
+        # extract top variables to keep for next iteration
         imp <- varImp(fit)$importance %>% 
           tibble::rownames_to_column() %>% 
           as_tibble() %>% dplyr::rename(var = rowname)
-        #requires aggregation of importance for factor variable levels,
-        #if any present
+        # requires aggregation of importance for factor variable levels,
+        # if any present
         if(any(sapply(train, is.factor))){
           fct_chr_cols <- train %>%
             select(where(~ is.factor(.) || is.character(.))) %>%
@@ -201,36 +201,36 @@ perform_rfe <- function(response, base_learner = "ranger", type = "regression",
         # select the variables to retain
         keep_vars[[j]] <- imp %>%
           arrange(desc(Overall)) %>% slice(1:subsets[j+1]) %>% pull(var)
-        #extract variables dropped from dataset
+        # extract variables dropped from dataset
         drop_vars[[j]] <- names(train)[!names(train) %in% c(keep_vars[[j]], response)] %>% 
           tibble::enframe() %>% mutate(rank = length(subsets)-j+1) %>% 
           dplyr::select(value, rank) %>% dplyr::rename(var = value)
-        #define new training data
+        # define new training data
         newtrain <- dplyr::select(train, response, keep_vars[[j]])
-        #last iteration
+        # last iteration
       } else {
         drop_vars[[j]] <- names(train)[names(train) != response] %>% 
           tibble::enframe() %>% mutate(rank = length(subsets)-j+1) %>% 
           dplyr::select(value, rank) %>% rename(var = value)
       }
-    } #END OF FEATURE ELIMINATION ON RESAMPLE i
+    } # END OF FEATURE ELIMINATION ON RESAMPLE i
     
-    #clean environment 
+    # clean environment 
     rm("newtrain")
-    #gather results for resample i
+    # gather results for resample i
     ranks <- drop_vars %>% do.call("rbind", .)
     # save subset results
     saveRDS(
       list(ranks, train_perf, test_perf, null_perf, npred),
       paste0(savedir, "/out_subset_", i, ".rds"))
     return(list(ranks, train_perf, test_perf, null_perf, npred))
-  } #END OF OUTER RESAMPLING
+  } # END OF OUTER RESAMPLING
 }
 
-#Create a tidy output
+# Create a tidy output
 tidy_rfe_output <- function(data, base_learner){
   
-  #tidy up list output
+  # tidy up list output
   subsets <- unlist(data[[1]][[length(data[[1]])]])
   ranks <- lapply(data, "[[", 1) %>% 
     Reduce(function(dtf1, dtf2) full_join(dtf1, dtf2, by = "var"), .) %>% 
@@ -284,13 +284,13 @@ tidy_rfe_output <- function(data, base_learner){
   return(tidy_out)
 }
 
-#Plot performance profiles
+# Plot performance profiles
 plot_perf_profile <- function(data, metric){
   pd <- position_dodge(0.5) # move them .05 to the left and right
   colors = c("blue", "orange", "black")
   r2 <- data %>% filter(name == metric)
   ylabel <- ifelse(metric == "Rsquared", expression("R"^2), metric)
-  #plot performance profiles
+  # plot performance profiles
   ggplot(r2, aes(x = subset_size, y = mean, group = Type, color = Type)) +
     geom_point(position = pd, size = 2) +  # Apply dodge to points
     geom_line() +  # Line shouldn't use dodge
@@ -307,7 +307,7 @@ plot_perf_profile <- function(data, metric){
     )
 }
 
-#Plot feature ranks
+# Plot feature ranks
 plot_feature_ranks <- function(data, top_n){
   data <- data %>% slice(1:top_n)
   ggplot(data, aes(x=order, y=mean)) +
@@ -331,7 +331,7 @@ plot_feature_ranks <- function(data, top_n){
 
 #====================================================================================== -
 
-#Helper function to calculate accuracy
+# Helper function to calculate accuracy
 get_acc <- function(model, testdata, response = response) {
   preds_class <- caret::predict.train(model, newdata = testdata[ , names(testdata) != "trt"])
   true_class <- factor(testdata[[response]])
@@ -340,7 +340,7 @@ get_acc <- function(model, testdata, response = response) {
   acc <- match/nrow(testdata)
 }
 
-#Helper function to get RMSE
+# Helper function to get RMSE
 rmse <- function(actual, predicted) {
   sqrt(mean((actual - predicted) ^ 2))
 }
